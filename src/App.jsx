@@ -79,7 +79,9 @@ function App() {
       <SearchBar onSubmit={handleSearch} initialQuery={query || ""} />
       {loading && <Loader />}
       {error && <ErrorMessage message={error} />}
+      <div className="galleryContainer">
       <ImageGallery photos={photos} onImageClick={handleImageClick} />
+</div>
       {photos.length > 0 && !loading && !loadingMore && hasMorePhotos && (
         <LoadMoreBtn onClick={handleLoadMore} />
       )}
