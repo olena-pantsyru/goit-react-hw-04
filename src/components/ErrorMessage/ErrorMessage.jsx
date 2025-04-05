@@ -1,5 +1,7 @@
 import styles from "./ErrorMessage.module.css";
 
-export default function ErrorMessage({ message }) {
+const ErrorMessage = ({ message }) => {
   return <p className={styles.error}>{message}</p>;
-}
+};
+
+export default ErrorMessage;

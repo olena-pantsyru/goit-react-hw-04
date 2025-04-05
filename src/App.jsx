@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
-import axios from "axios";
-import "./App.css";
+import { useState } from "react";
+import toast, { Toaster } from "react-hot-toast";
+import { fetchPhoto } from "./galleryService";
 
 import SearchBar from "./components/SearchBar/SearchBar";
 import ImageGallery from "./components/ImageGallery/ImageGallery";
@@ -9,65 +9,85 @@ import ErrorMessage from "./components/ErrorMessage/ErrorMessage";
 import LoadMoreBtn from "./components/LoadMoreBtn/LoadMoreBtn";
 import ImageModal from "./components/ImageModal/ImageModal";
 
+import "./App.css";
 
-const API_KEY = "3MWM5wVuSxC4QxpiBL-Oa1lc3Y76owEJjOdw6KHEDlU";
-const BASE_URL = "https://api.unsplash.com/search/photos";
-
-export default function App() {
+function App() {
   const [query, setQuery] = useState("");
-  const [images, setImages] = useState([]);
-  const [page, setPage] = useState(1);
-  const [isLoading, setIsLoading] = useState(false);
+  const [photos, setPhotos] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState(null);
-  const [selectedImage, setSelectedImage] = useState(null);
+  const [page, setPage] = useState(1);
+  const [selectedPhoto, setSelectedPhoto] = useState(null);
+  const [hasMorePhotos, setHasMorePhotos] = useState(true);
 
-  useEffect(() => {
-    if (!query) return;
-
-    async function fetchImages() {
-      setIsLoading(true);
-      setError(null);
-
-      try {
-        const response = await axios.get(BASE_URL, {
-          params: {
-            query,
-            page,
-            per_page: 12,
-            client_id: API_KEY,
-          },
-        });
-        setImages((prevImages) => [...prevImages, ...response.data.results]);
-      } catch (err) {
-        setError("Ошибка при загрузке изображений. Попробуйте снова.");
-      } finally {
-        setIsLoading(false);
-      }
-    }
-
-    fetchImages();
-  }, [query, page]);
-
-  const handleSearch = (newQuery) => {
-    if (query !== newQuery) {
-      setQuery(newQuery);
-      setImages([]);
-      setPage(1);
-    }
+  const handleSearch = async (searchQuery) => {
+    setQuery(searchQuery);
+    setPage(1);
+    setPhotos([]);
+    setHasMorePhotos(true);
+    await fetchPhotos(searchQuery, 1);
   };
 
-  const handleLoadMore = () => {
-    setPage((prevPage) => prevPage + 1);
+  const handleLoadMore = async () => {
+    const nextPage = page + 1;
+    setPage(nextPage);
+    await fetchPhotos(query, nextPage);
+  };
+
+  const handleImageClick = (photo) => {
+    setSelectedPhoto(photo);
+  };
+
+  const closeModal = () => {
+    setSelectedPhoto(null);
+  };
+
+  const fetchPhotos = async (searchQuery, page) => {
+    if (!searchQuery) return;
+
+    if (page === 1) {
+      setLoading(true);
+    } else {
+      setLoadingMore(true);
+    }
+    setError(null);
+    try {
+      const data = await fetchPhoto(searchQuery, page);
+
+      if (data.length === 0) {
+        if (page === 1) {
+          toast("Nothing found", { duration: 3000 });
+        }
+      } else {
+        setPhotos((prev) => [...prev, ...data]);
+        if (data.length < 12) {
+          toast("End of collection", { duration: 3000 });
+          setHasMorePhotos(false);
+        }
+      }
+    } catch (error) {
+      setError("Pls reload page...");
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
+    }
   };
 
   return (
-    <div>
-      <SearchBar onSubmit={handleSearch} />
+    <>
+      <SearchBar onSubmit={handleSearch} initialQuery={query || ""} />
+      {loading && <Loader />}
       {error && <ErrorMessage message={error} />}
-      <ImageGallery images={images} onImageClick={setSelectedImage} />
-      {isLoading && <Loader />}
-      {images.length > 0 && <LoadMoreBtn onClick={handleLoadMore} />}
-      {selectedImage && <ImageModal image={selectedImage} onClose={() => setSelectedImage(null)} />}
-    </div>
+      <ImageGallery photos={photos} onImageClick={handleImageClick} />
+      {photos.length > 0 && !loading && !loadingMore && hasMorePhotos && (
+        <LoadMoreBtn onClick={handleLoadMore} />
+      )}
+      {loadingMore && <Loader />}
+      <ImageModal onClose={closeModal} photo={selectedPhoto} />
+      <Toaster position="top-center" />
+    </>
   );
 }
+
+export default App;

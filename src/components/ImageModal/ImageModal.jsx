@@ -1,11 +1,16 @@
+import Modal from "react-modal";
 import styles from "./ImageModal.module.css";
 
-export default function ImageModal({ image, onClose }) {
+const ImageModal = ({ onClose, photo }) => {
+  if (!photo) return null;
+
   return (
-    <div className={styles.overlay} onClick={onClose}>
-      <div className={styles.modal}>
-        <img src={image} alt="Large view" />
-      </div>
-    </div>
+    <Modal isOpen={true} onRequestClose={onClose} className={styles.modal}>
+      <img src={photo.urls.regular} alt={photo.alt_description} />
+      <p>{photo.description || "No description available"}</p>
+      <button onClick={onClose}>Close</button>
+    </Modal>
   );
-}
+};
+
+export default ImageModal;
