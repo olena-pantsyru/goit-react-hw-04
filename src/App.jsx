@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import toast, { Toaster } from "react-hot-toast";
 import { fetchPhoto } from "./galleryService";
 
@@ -21,18 +21,52 @@ function App() {
   const [selectedPhoto, setSelectedPhoto] = useState(null);
   const [hasMorePhotos, setHasMorePhotos] = useState(true);
 
-  const handleSearch = async (searchQuery) => {
+  useEffect(() => {
+    if (!query) return;
+
+    const fetchPhotos = async () => {
+      if (page === 1) {
+        setLoading(true);
+      } else {
+        setLoadingMore(true);
+      }
+      setError(null);
+      try {
+        const data = await fetchPhoto(query, page);
+
+        if (data.length === 0) {
+          if (page === 1) {
+            toast("Nothing found", { duration: 3000 });
+            setPhotos([]);
+          }
+          setHasMorePhotos(false);
+        } else {
+          setPhotos((prev) => (page === 1 ? data : [...prev, ...data]));
+          if (data.length < 12) {
+            toast("End of collection", { duration: 3000 });
+            setHasMorePhotos(false);
+          }
+        }
+      } catch (error) {
+        setError("Pls reload page...");
+      } finally {
+        setLoading(false);
+        setLoadingMore(false);
+      }
+    };
+
+    fetchPhotos();
+  }, [query, page]);
+
+  const handleSearch = (searchQuery) => {
     setQuery(searchQuery);
     setPage(1);
     setPhotos([]);
     setHasMorePhotos(true);
-    await fetchPhotos(searchQuery, 1);
   };
 
-  const handleLoadMore = async () => {
-    const nextPage = page + 1;
-    setPage(nextPage);
-    await fetchPhotos(query, nextPage);
+  const handleLoadMore = () => {
+    setPage((prev) => prev + 1);
   };
 
   const handleImageClick = (photo) => {
@@ -43,45 +77,14 @@ function App() {
     setSelectedPhoto(null);
   };
 
-  const fetchPhotos = async (searchQuery, page) => {
-    if (!searchQuery) return;
-
-    if (page === 1) {
-      setLoading(true);
-    } else {
-      setLoadingMore(true);
-    }
-    setError(null);
-    try {
-      const data = await fetchPhoto(searchQuery, page);
-
-      if (data.length === 0) {
-        if (page === 1) {
-          toast("Nothing found", { duration: 3000 });
-        }
-      } else {
-        setPhotos((prev) => [...prev, ...data]);
-        if (data.length < 12) {
-          toast("End of collection", { duration: 3000 });
-          setHasMorePhotos(false);
-        }
-      }
-    } catch (error) {
-      setError("Pls reload page...");
-    } finally {
-      setLoading(false);
-      setLoadingMore(false);
-    }
-  };
-
   return (
     <>
       <SearchBar onSubmit={handleSearch} initialQuery={query || ""} />
       {loading && <Loader />}
       {error && <ErrorMessage message={error} />}
       <div className="galleryContainer">
-      <ImageGallery photos={photos} onImageClick={handleImageClick} />
-</div>
+        <ImageGallery photos={photos} onImageClick={handleImageClick} />
+      </div>
       {photos.length > 0 && !loading && !loadingMore && hasMorePhotos && (
         <LoadMoreBtn onClick={handleLoadMore} />
       )}
